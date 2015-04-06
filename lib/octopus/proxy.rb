@@ -65,11 +65,12 @@ module Octopus
             @shards[k.to_sym] = connection_pool_for(config_with_octopus_shard, "#{v['adapter']}_connection")
             @groups[key.to_s] << k.to_sym
           end
-
-          if structurally_slave_group? value
-            slaves = Hash[@groups[key.to_s].map { |v| [v, v] }]
-            @slave_groups[key.to_sym] = Octopus::SlaveGroup.new(slaves)
-          end
+          
+          # Disabling Slave Groups. Can not get it to work with sharding. 
+          #if structurally_slave_group? value
+          #  slaves = Hash[@groups[key.to_s].map { |v| [v, v] }]
+          #  @slave_groups[key.to_sym] = Octopus::SlaveGroup.new(slaves)
+          #end
         end
       end
 
@@ -86,6 +87,10 @@ module Octopus
 
       @slaves_list = @shards.keys.map(&:to_s).sort
       @slaves_list.delete('master')
+      # Exclude anything in the slave list that is not called slave. 
+      # This needs to be done in case of sharding , where one shard / master db has presidence 
+      # and we just want to shard based on it.
+      @slaves_list.delete_if{ |name| !name.to_s.include?('slave') }
       @slaves_load_balancer = Octopus::LoadBalancing::RoundRobin.new(@slaves_list)
     end
 
